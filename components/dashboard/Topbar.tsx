@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { Bell, Menu } from "lucide-react";
 
@@ -9,8 +10,8 @@ const pageTitles: Record<string, string> = {
   "/dashboard/assistant": "AI Health Assistant",
   "/dashboard/routine": "Skincare Routine",
   "/dashboard/tracker": "Skin Progress Tracker",
-  "/dashboard/history": "Analysis History",
-  "/dashboard/settings": "Account Settings",
+  "/dashboard/history": "History",
+  "/dashboard/settings": "Settings",
 };
 
 interface TopbarProps {
@@ -20,6 +21,21 @@ interface TopbarProps {
 export default function Topbar({ onMenuClick }: TopbarProps) {
   const pathname = usePathname();
   const title = pageTitles[pathname] ?? "Dashboard";
+  const [userName, setUserName] = useState<string>("U");
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        if (user.name) {
+          setUserName(user.name.charAt(0));
+        }
+      } catch (err) {
+        console.error("Failed to parse user from localStorage", err);
+      }
+    }
+  }, []);
 
   return (
     <header className="h-16 border-b border-slate-100 bg-white flex items-center justify-between px-4 sm:px-6 sticky top-0 z-30">
@@ -47,7 +63,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
         </button>
 
         <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 ml-1">
-          <span className="text-xs font-semibold text-emerald-700">U</span>
+          <span className="text-xs font-semibold text-emerald-700">{userName}</span>
         </div>
       </div>
     </header>

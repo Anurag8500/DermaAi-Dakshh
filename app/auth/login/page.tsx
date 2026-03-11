@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import AuthLayout from "@/components/auth/AuthLayout";
 import AuthInput from "@/components/auth/AuthInput";
@@ -26,6 +27,15 @@ export default function LoginPage() {
   const [errors, setErrors] = useState<LoginErrors>({});
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    // Check if we came from signup or other redirect
+    if (searchParams.get("registered") === "true") {
+      setLoginError(null);
+    }
+  }, [searchParams]);
 
   const validate = (): boolean => {
     const newErrors: LoginErrors = {};
@@ -46,13 +56,46 @@ export default function LoginPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
 
-    // UI-only loading simulation
     setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 1500);
+    setLoginError(null);
+
+    try {
+      const response = await fetch("http://127.0.0.1:3000/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: form.email,
+          password: form.password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Login failed");
+      }
+
+      // Store token and user details
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify({
+        id: data._id,
+        name: data.name,
+        email: data.email,
+      }));
+
+      // Redirect to dashboard
+      window.location.href = "/dashboard";
+    } catch (err: any) {
+      setLoginError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleChange = (field: keyof LoginForm) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -70,6 +113,11 @@ export default function LoginPage() {
       subtitle="Access your account to analyze skin conditions and track your progress."
     >
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+        {loginError && (
+          <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg">
+            {loginError}
+          </div>
+        )}
         {/* Email */}
         <AuthInput
           label="Email Address"
@@ -123,7 +171,7 @@ export default function LoginPage() {
             <span className="text-sm text-slate-600">Remember me</span>
           </label>
           <Link
-            href="#"
+            href={`/auth/forgot-password${form.email ? `?email=${encodeURIComponent(form.email)}` : ""}`}
             className="text-sm text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
           >
             Forgot password?

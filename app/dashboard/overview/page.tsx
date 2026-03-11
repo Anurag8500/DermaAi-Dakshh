@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Scan,
@@ -61,11 +64,29 @@ const recentActivity = [
 ];
 
 export default function OverviewPage() {
+  const [userName, setUserName] = useState<string>("");
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        if (user.name) {
+          setUserName(user.name.split(" ")[0]); // Just first name
+        }
+      } catch (err) {
+        console.error("Failed to parse user data", err);
+      }
+    }
+  }, []);
+
   return (
     <div className="space-y-8">
       {/* Welcome */}
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Welcome back! 👋</h2>
+        <h2 className="text-2xl font-bold text-slate-900">
+          Welcome back{userName ? `, ${userName}` : ""}! 👋
+        </h2>
         <p className="text-slate-500 mt-1 text-sm">
           Track your skin health and access AI-powered insights.
         </p>

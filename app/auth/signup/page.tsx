@@ -11,7 +11,6 @@ interface SignUpForm {
   email: string;
   password: string;
   confirmPassword: string;
-  agreeToTerms: boolean;
 }
 
 interface SignUpErrors {
@@ -19,7 +18,6 @@ interface SignUpErrors {
   email?: string;
   password?: string;
   confirmPassword?: string;
-  agreeToTerms?: string;
 }
 
 export default function SignUpPage() {
@@ -28,12 +26,12 @@ export default function SignUpPage() {
     email: "",
     password: "",
     confirmPassword: "",
-    agreeToTerms: false,
   });
   const [errors, setErrors] = useState<SignUpErrors>({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [signupError, setSignupError] = useState<string | null>(null);
 
   const validate = (): boolean => {
     const newErrors: SignUpErrors = {};
@@ -60,26 +58,48 @@ export default function SignUpPage() {
       newErrors.confirmPassword = "Passwords do not match";
     }
 
-    if (!form.agreeToTerms) {
-      newErrors.agreeToTerms = "You must agree to the Terms of Service";
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
 
-    // UI-only loading simulation
     setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 1500);
+    setSignupError(null);
+
+    try {
+      const response = await fetch("http://127.0.0.1:3000/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: form.fullName,
+          email: form.email,
+          password: form.password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Registration failed");
+      }
+
+      // Successful registration, redirect to check-email
+      window.location.href = "/auth/check-email";
+    } catch (err: any) {
+      setSignupError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleChange =
     (field: keyof SignUpForm) => (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = field === "agreeToTerms" ? e.target.checked : e.target.value;
+      const value = e.target.value;
       setForm((prev) => ({ ...prev, [field]: value }));
       if (errors[field as keyof SignUpErrors]) {
         setErrors((prev) => ({ ...prev, [field]: undefined }));
@@ -92,6 +112,11 @@ export default function SignUpPage() {
       subtitle="Start your journey toward smarter skincare with AI-powered insights."
     >
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+        {signupError && (
+          <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg">
+            {signupError}
+          </div>
+        )}
         {/* Full Name */}
         <AuthInput
           label="Full Name"
@@ -178,35 +203,6 @@ export default function SignUpPage() {
             </button>
           }
         />
-
-        {/* Agree to Terms */}
-        <div className="flex flex-col gap-1.5">
-          <label className="flex items-start gap-2.5 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              id="agree-terms"
-              checked={form.agreeToTerms}
-              onChange={handleChange("agreeToTerms")}
-              aria-describedby={errors.agreeToTerms ? "terms-error" : undefined}
-              className="mt-0.5 w-4 h-4 rounded border-slate-300 text-emerald-600 accent-emerald-600 focus:ring-emerald-500 cursor-pointer flex-shrink-0"
-            />
-            <span className="text-sm text-slate-600 leading-snug">
-              I agree to the{" "}
-              <Link href="#" className="text-emerald-600 hover:text-emerald-700 font-medium transition-colors">
-                Terms of Service
-              </Link>{" "}
-              and{" "}
-              <Link href="#" className="text-emerald-600 hover:text-emerald-700 font-medium transition-colors">
-                Privacy Policy
-              </Link>
-            </span>
-          </label>
-          {errors.agreeToTerms && (
-            <p id="terms-error" role="alert" className="text-xs text-red-600">
-              {errors.agreeToTerms}
-            </p>
-          )}
-        </div>
 
         {/* Submit */}
         <button
